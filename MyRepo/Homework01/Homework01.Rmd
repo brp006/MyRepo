@@ -1,0 +1,231 @@
+---
+title: "Hibernation Dataset"
+author: "Ken Field"
+date: "1/10/2020"
+output: html_document
+---
+
+This code helps set up the R markdown document to make a nice clean html file for sharing. 
+Click the green triangle to run the code chunk. 
+Note that all of your packages should be installed in the first code chunk.
+Tidyverse should generally be the last package installed.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if (!require("readxl")) install.packages("readxl"); library(readxl)
+if (!require("tidyverse")) install.packages("tidyverse"); library(tidyverse)
+```
+
+Click this green arrow to run a chunk of code that produces output.
+
+
+You can also embed plots within code chunks, for example:
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot. You should delete the above two code chunks and proceed with your homework below.
+
+The dataset that you will be analyzing came from the following paper:
+Heldstab SA, Isler K, van Schaik CP (2018) Hibernation constrains brain size evolution in mammals. Journal of Evolutionary Biology 31(10): 1582-1588. https://doi.org/10.1111/jeb.13353
+
+The dataset was downloaded from Dryad https://datadryad.org/, a data repository for biology. The citation for this dataset:
+Heldstab SA, Isler K, van Schaik CP (2018) Data from: Hibernation constrains brain size evolution in mammals. Dryad Digital Repository. https://doi.org/10.5061/dryad.753d06g
+
+Download the xls data from that page or from the class github repository and make sure that it is in the same folder as this Rmd file.
+
+```{r Import Data}
+Supplementary_material <- read_excel("Supplementary material.xlsx")
+```
+
+The description of the data:
+List of species and data used for this study (1104 mammalian species) including references for brain mass, body mass, hibernation, diurnality, substrate use, diet and mid-latitude of geographical distribution data
+
+```{r}
+head(Supplementary_material)
+summary(Supplementary_material)
+```
+
+Before you proceed with analyzing this dataset, check that it is complete and that you understand what each variable (column) means. You may need to refer to the paper (available in the zip file).
+![Heldstab et al.](Heldstab_et_al-2018-Journal_of_Evolutionary_Biology.pdf)
+From the Methods section:
+Hibernation was coded as a binary variable with (0) for nonhibernating and (1) for hibernating species with data from the published literature.
+To control for diet quality, species were divided into four categories based on their main diet: herbivore or folivore (1), frugivore/folivore or granivore (2), frugivore/faunivore or omnivore (3) and faunivore, piscivore, carnivore or insectivore (4). A binary coding was used for activity period, with (0) for nocturnal, cathemeral or crepuscular species and (1) for diurnal species. For substrate use, each species was assigned to one of five substrate use categories: semi-aquatic (1), fossorial or semi-fossorial (2), terrestrial or semi-arboreal (3), arboreal (4) and volant (5).
+
+After becoming familiar with the dataset, conduct exploratory data analysis of the key variables to test the hypothesis provided in the title of the paper: "Hibernation constrains brain size evolution in mammals". 
+While you are exploring the data, come up with an alternative hypothesis to test.
+
+To recieve full credit for the assignment you will need to provide: 
+(1) step-by-step exploration of the data that support your chosen method of analysis
+(2) graphs that provide a clear illustration of support (or lack of support) for both hypotheses
+(3) a statistical test that quantifies the level of support for both hypotheses
+
+```{r Barplot}
+ggplot(Supplementary_material) +
+  aes(x = diet) +
+  geom_bar() +
+  theme_cowplot()
+```
+Help from Fallon and Prof. Field in visualizing data/fixing errors. I just wanted to make sure I could use the spreadsheet properly in this. A little warm-up, if you will.
+
+In this paper, the authors hypothesized that the presence of hibernaton in mammals is correlated with decreased relative brain size, in accordance with the expensive brain hypothesis. Since hibernating animals have drastically reduced food intake, it would be logical to hypothesize that hibernation adds an evolutionary constraint on brain size relative to mammal size. 
+
+```{r Load and summarize dataset}
+data(Supplementary_material)
+summary(Supplementary_material)
+```
+The Supplementary material dataset has 16 variables. Right now, I am interested in the brain mass and hibernation.
+
+```{r Barplot}
+ggplot(Supplementary_material) +
+  aes(x = as.factor(hibernation)) + 
+  geom_bar() +
+  theme_cowplot() + scale_x_discrete(name = "Hibernation") + scale_y_continuous(name = "Count")
+```
+This gave me an idea of what type of mammals are represented in this dataset - the majority do not hibernate. 
+
+To get an idea of how brain masses were distributed, I made a histogram. Fallon helped me figure out how to decide bins, aesthetics, etc.
+
+```{r}
+ggplot(Supplementary_material, aes(x=`brain mass`)) + 
+  geom_histogram(color="black", fill="white", bins = 100) +
+  theme_cowplot()
+```
+This obviously doesn't look great. To normalize the data, I'll log transform it (below) and make a new histogram
+```{r}
+shapiro.test(Supplementary_material$`brain mass`)
+shapiro.test(Supplementary_material$hibernation)
+```
+
+Neither of these data are normally distributed; p values are below .05. To attempt more normal distribution, I took the log of brain mass below.
+Professor Field helped me determine to use log base 10
+```{r}
+normalizedbrain = log(Supplementary_material$`brain mass`,10)
+normalizedbody = log(Supplementary_material$`body mass`,10)
+
+```
+```{r}
+shapiro.test(normalizedbrain)
+shapiro.test(normalizedbody)
+```
+This is still not normalized for either, but I want to see the ratio.
+```{r}
+shapiro.test(normalizedbrain/normalizedbody)
+```
+Still not normalized, but will continue to work with data anyways.
+```{r}
+qqnorm(normalizedbrain, main='Normal Q-Q Plot for Log Transformed Brain')
+qqline(normalizedbrain)
+```
+This is brain size alone (transformed)
+```{r}
+qqnorm(normalizedbrain/normalizedbody, main='Normal Q-Q Plot for Log Transformed Brain')
+qqline(normalizedbrain/normalizedbody)
+```
+This doesn't look great. However, the paper's hypothesis discusses relative brain mass, so I want to stick with this.
+```{r hibernation vs brain mass}
+ggplot(Supplementary_material) +
+  aes(x = hibernation, y = `brain mass`/`body mass`) +
+  geom_point() +
+  theme_cowplot()
+```
+This is telling you about relative brain mass by putting brain mass over body mass. As of right now, it is hard to determine whether data is significantly different.
+```{r hibernation vs brain mass}
+ggplot(Supplementary_material) +
+  aes(x = hibernation, y = normalizedbrain/normalizedbody) +
+  geom_point() +
+  theme_cowplot()
+```
+Above is log transformed. 
+To make a histogram for log transformed data:
+```{r}
+ggplot(Supplementary_material, aes(x=log(`brain mass`, 10))) + 
+  geom_histogram(color="black", fill="white", bins = 75) +
+  theme_cowplot()+ scale_x_continuous(name = "Log(Brain Mass)") + scale_y_continuous(name = "Count") + ggtitle("Histogram of Log Brain Mass")
+```
+I used aesthetics that I learned from online supplementary materials: http://t-redactyl.io/blog/2016/04/creating-plots-in-r-using-ggplot2-part-10-boxplots.html
+
+```{r}
+ggplot(Supplementary_material, aes(x=log(`brain mass`/`body mass`, 10))) + 
+  geom_histogram(color="black", fill="white", bins = 75) +
+  theme_cowplot()+ scale_x_continuous(name = "Log(Relative Brain Mass)") + scale_y_continuous(name = "Count") + ggtitle("Histogram of Log Relative Brain Mass")
+```
+Above is the transformed relative brain mass distribution. 
+
+I log transformed the data for the box plots below. I used the same website above for aesthetics and how to create the ggplot box plot. Right now, we have not done statistical analysis that takes into account phylogenetic relationships. There is no way to determine whether brain mass is restricted by hibernation behavior.
+```{r}
+ggplot(Supplementary_material, aes(x=as.factor(hibernation), y=(log(`brain mass`,10)), group=hibernation)) + 
+  geom_boxplot() + scale_x_discrete(name = "Hibernation") + scale_y_continuous(name = "Log(Brain Mass)") + ggtitle("Boxplot of log(Brain Mass) by Hibernation") + theme_bw() + 
+              theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+I wanted to get a better idea of relative brain mass so I divided brain mass by body mass.
+
+
+```{r}
+ggplot(Supplementary_material, aes(x=as.factor(hibernation), y=(log(`brain mass`/`body mass`,10)), group=hibernation)) + 
+  geom_boxplot() + scale_x_discrete(name = "Hibernation") + scale_y_continuous(name = "Log(Brain Mass/Body Mass)") + ggtitle("Boxplot of log(Brain Mass/Body Mass) by Hibernation") + theme_bw() + 
+              theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+Next, to see if this was statistically significant, I used a t-test where y is numeric and x is a binary. I found out how to do this from statemethods.net/stats/ttest.html
+
+```{r}
+t.test(normalizedbrain/normalizedbody~Supplementary_material$hibernation)
+```
+The log transformed brain over the log transformed body was statistically significant with a p value of 2.419e-08. This is saying that with 95% confidence, we can say that the mean relative brain size for non-hibernating animals is significantly different than the mean relative brain size for hibernating animals.
+
+I wanted to test the hypothesis that presence of hibernation behaviors are correlated with substrate use. Mammals that are living in areas that are consistent year round or can manipulate environments to keep them relatively constant (like fossorial mammals that can burrow in the ground) likely don't need to hibernate. However, I would expect taht animals in more traditional terrestrial environments that change seasonally are more likely to hibernate due to shifting resource availability. I wanted to see the makeup of hibernating animals below based on substrate use.
+
+
+```{r Barplot}
+ggplot(Supplementary_material) +
+  aes(x = as.factor(hibernation), fill = `substrate use`) + 
+  geom_bar() +
+  theme_cowplot()
+```
+
+Below is a clearer visual showing which animals hibernate based on their substrate use. 
+```{r}
+counts <- table(Supplementary_material$hibernation, Supplementary_material$`substrate use`)
+barplot(counts, main="Substrate use and hibernation",
+  xlab="diet type", col=c("black","white"),
+  legend = rownames(counts))
+```
+The above graph was made using help from Fallon, who's a real homie. She found information on how to create this from www.statmethods.net
+
+
+To see if this is statistically significant, I ran a chi-square test. I first made a table to visualize how many hibernators/nonhibernators were in each substrate use category.
+
+
+```{r}
+table(Supplementary_material$hibernation, Supplementary_material$`substrate use`)
+```
+
+
+```{r}
+chisq.test(table(Supplementary_material$hibernation, Supplementary_material$`substrate use`))
+```
+With a p value of 2.144e-12, I can reject the null hypothesis. There is a signficant relationship between substrate use and hibernation. 
+
+```{r}
+data.frame(table(Supplementary_material$hibernation,Supplementary_material$diet))
+
+
+ggplot(data=Supplementary_material, aes(x=hibernation, fill=diet)) + geom_bar(stat="identity")
+```
+
+
+
+I was also curious about body mass. I expected that animals with larger body masses are less likely to hibernate. Evolutionarily, I could see hibernation as a disadvantageous trait in large animals. Larger body masses require more energy to fuel metabolic processes. During hibernation, mammals cannot access and replenish food stores to maintain basal metabolic rates; it is therefore likely that mammals with larger body masses are less likely to evolve to hibernate. 
+
+```{r}
+ggplot(Supplementary_material, aes(x=as.factor(hibernation), y=(log(`body mass`,10)), group=hibernation)) + 
+  geom_boxplot() + scale_x_discrete(name = "Hibernation") + scale_y_continuous(name = "Log(Body Mass)") + ggtitle("Boxplot of log(Body Mass) by Hibernation") + theme_bw() + 
+              theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+With the log transformed data, the body mass of hibernating animals was smaller than non-hibernating animals.
+```{r}
+t.test(normalizedbody~Supplementary_material$hibernation)
+```
+As shown in the t-test, we can say with 95% confidence that the means are statistically significant. Hibernating animals tend to have smaller body sizes than non-hibernating animals. 
