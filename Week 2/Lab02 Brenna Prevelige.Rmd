@@ -25,7 +25,7 @@ date: "22 Jan 2020"
 
 ```{r Git and RStudio}
 if (!require("usethis")) install.packages("usethis"); library(usethis)
-use_git_config(user.name = "Jane Doe", user.email = "jane@example.org")
+use_git_config(user.name = "Brenna Prevelige", user.email = "brp006@bucknell.edu")
 git_sitrep()
 ```
 
